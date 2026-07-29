@@ -1,0 +1,24 @@
+diff --git a/audio/out/ao_audiotrack.c b/audio/out/ao_audiotrack.c
+index 63612e6..a1b2c3d 100644
+--- a/audio/out/ao_audiotrack.c
++++ b/audio/out/ao_audiotrack.c
+@@ -315,7 +315,18 @@ static int AudioTrack_New(struct ao *ao)
+     JNIEnv *env = MP_JNI_GET_ENV(ao);
+     jobject audiotrack = NULL;
+ 
+-    if (AudioTrack.ctorV21) {
++    // Verify that ALL AudioFormatBuilder & AudioAttributesBuilder methods are
++    // available before using the V21 constructor path. On some devices,
++    // ctorV21 may be non-NULL while one or more builder methods fail to resolve
++    // (all marked optional in JNI mapping), causing JNI crashes when passing
++    // NULL method IDs to CallObjectMethod.
++    if (AudioTrack.ctorV21 &&
++        AudioFormatBuilder.ctor && AudioFormatBuilder.setEncoding &&
++        AudioFormatBuilder.setSampleRate && AudioFormatBuilder.setChannelMask &&
++        AudioFormatBuilder.build &&
++        AudioAttributesBuilder.ctor && AudioAttributesBuilder.setUsage &&
++        AudioAttributesBuilder.setContentType &&
++        AudioAttributesBuilder.build) {
+         MP_VERBOSE(ao, "Using API21 initializer\n");
+         jobject tmp = NULL;
+ 
