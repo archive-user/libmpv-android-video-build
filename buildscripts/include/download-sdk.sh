@@ -66,8 +66,9 @@ echo y | sdkmanager \
 	"ndk;${v_ndk}" \
 	"cmake;3.22.1"
 
+# gas-preprocessor
 mkdir -p bin
-$WGET "https://github.com/FFmpeg/gas-preprocessor/raw/$v_gas_preprocessor/gas-preprocessor.pl" \
+$WGET "https://github.com/FFmpeg/gas-preprocessor/raw/master/gas-preprocessor.pl" \
 	-O bin/gas-preprocessor.pl
 chmod +x bin/gas-preprocessor.pl
 
