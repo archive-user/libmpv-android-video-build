@@ -2,7 +2,7 @@ diff --git a/audio/out/ao_audiotrack.c b/audio/out/ao_audiotrack.c
 index 63612e6..a1b2c3d 100644
 --- a/audio/out/ao_audiotrack.c
 +++ b/audio/out/ao_audiotrack.c
-@@ -315,7 +315,18 @@ static int AudioTrack_New(struct ao *ao)
+@@ -305,7 +305,18 @@ static int AudioTrack_New(struct ao *ao)
      JNIEnv *env = MP_JNI_GET_ENV(ao);
      jobject audiotrack = NULL;
  
@@ -21,4 +21,3 @@ index 63612e6..a1b2c3d 100644
 +        AudioAttributesBuilder.build) {
          MP_VERBOSE(ao, "Using API21 initializer\n");
          jobject tmp = NULL;
- 
