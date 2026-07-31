@@ -22,9 +22,9 @@ diff --git a/player/client.c b/player/client.c
 index 232490d..d7a2842 100644
 --- a/player/client.c
 +++ b/player/client.c
-@@ -22,6 +22,8 @@
+@@ -19,6 +19,8 @@
  #include <math.h>
- #include <assert.h>
+ #include <errno.h>
  
 +#include <libavcodec/jni.h>
 +
