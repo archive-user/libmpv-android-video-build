@@ -16,7 +16,7 @@ getdeps () {
 loadarch () {
 	unset CC CXX CPATH LIBRARY_PATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH
 
-	local apilvl=21
+	local apilvl=26
 	# ndk_triple: what the toolchain actually is
 	# cc_triple: what Google pretends the toolchain is
 	if [ "$1" == "armv7l" ]; then
@@ -52,6 +52,7 @@ loadarch () {
 		export AS="nasm"
 	fi
 	export CXX=$cc_triple-clang++
+	export LDFLAGS="-Wl,-O1,--icf=safe -Wl,-z,max-page-size=16384"
 	export AR=llvm-ar
 	export RANLIB=llvm-ranlib
 }
