@@ -2,22 +2,78 @@ diff --git a/audio/out/ao_audiotrack.c b/audio/out/ao_audiotrack.c
 index 63612e6..a1b2c3d 100644
 --- a/audio/out/ao_audiotrack.c
 +++ b/audio/out/ao_audiotrack.c
-@@ -305,7 +305,18 @@ static int AudioTrack_New(struct ao *ao)
-     JNIEnv *env = MP_JNI_GET_ENV(ao);
-     jobject audiotrack = NULL;
+@@ -44,6 +44,9 @@
+ #include "osdep/timer.h"
+ #include "misc/jni.h"
  
--    if (AudioTrack.ctorV21) {
-+    // Verify that ALL AudioFormatBuilder & AudioAttributesBuilder methods are
-+    // available before using the V21 constructor path. On some devices,
-+    // ctorV21 may be non-NULL while one or more builder methods fail to resolve
-+    // (all marked optional in JNI mapping), causing JNI crashes when passing
-+    // NULL method IDs to CallObjectMethod.
-+    if (AudioTrack.ctorV21 &&
-+        AudioFormatBuilder.ctor && AudioFormatBuilder.setEncoding &&
-+        AudioFormatBuilder.setSampleRate && AudioFormatBuilder.setChannelMask &&
-+        AudioFormatBuilder.build &&
-+        AudioAttributesBuilder.ctor && AudioAttributesBuilder.setUsage &&
-+        AudioAttributesBuilder.setContentType &&
-+        AudioAttributesBuilder.build) {
-         MP_VERBOSE(ao, "Using API21 initializer\n");
-         jobject tmp = NULL;
++static mp_static_mutex jni_static_lock = MP_STATIC_MUTEX_INITIALIZER;
++static int jni_static_use_count = 0;
++
+ struct priv {
+     jobject audiotrack;
+     jint samplerate;
+@@ -445,7 +448,16 @@ static void uninit_jni(struct ao *ao)
+ {
+     JNIEnv *env = MP_JNI_GET_ENV(ao);
+-    mp_jni_reset_jfields(env, &AudioTrack, AudioTrack.mapping, 1, ao->log);
+-    mp_jni_reset_jfields(env, &AudioTimestamp, AudioTimestamp.mapping, 1, ao->log);
+-    mp_jni_reset_jfields(env, &AudioManager, AudioManager.mapping, 1, ao->log);
+-    mp_jni_reset_jfields(env, &AudioFormat, AudioFormat.mapping, 1, ao->log);
+-    mp_jni_reset_jfields(env, &AudioFormatBuilder, AudioFormatBuilder.mapping, 1, ao->log);
+-    mp_jni_reset_jfields(env, &AudioAttributes, AudioAttributes.mapping, 1, ao->log);
+-    mp_jni_reset_jfields(env, &AudioAttributesBuilder, AudioAttributesBuilder.mapping, 1, ao->log);
+-    mp_jni_reset_jfields(env, &ByteBuffer, ByteBuffer.mapping, 1, ao->log);
++    mp_mutex_lock(&jni_static_lock);
++    jni_static_use_count--;
++    if (jni_static_use_count == 0) {
++        mp_jni_reset_jfields(env, &AudioTrack, AudioTrack.mapping, 1, ao->log);
++        mp_jni_reset_jfields(env, &AudioTimestamp, AudioTimestamp.mapping, 1, ao->log);
++        mp_jni_reset_jfields(env, &AudioManager, AudioManager.mapping, 1, ao->log);
++        mp_jni_reset_jfields(env, &AudioFormat, AudioFormat.mapping, 1, ao->log);
++        mp_jni_reset_jfields(env, &AudioFormatBuilder, AudioFormatBuilder.mapping, 1, ao->log);
++        mp_jni_reset_jfields(env, &AudioAttributes, AudioAttributes.mapping, 1, ao->log);
++        mp_jni_reset_jfields(env, &AudioAttributesBuilder, AudioAttributesBuilder.mapping, 1, ao->log);
++        mp_jni_reset_jfields(env, &ByteBuffer, ByteBuffer.mapping, 1, ao->log);
++    }
++    mp_mutex_unlock(&jni_static_lock);
+ }
+ 
+ static int init_jni(struct ao *ao)
+ {
++    mp_mutex_lock(&jni_static_lock);
+     JNIEnv *env = MP_JNI_GET_ENV(ao);
+-    if (mp_jni_init_jfields(env, &AudioTrack, AudioTrack.mapping, 1, ao->log) < 0 ||
+-        mp_jni_init_jfields(env, &ByteBuffer, ByteBuffer.mapping, 1, ao->log) < 0 ||
+-        mp_jni_init_jfields(env, &AudioTimestamp, AudioTimestamp.mapping, 1, ao->log) < 0 ||
+-        mp_jni_init_jfields(env, &AudioManager, AudioManager.mapping, 1, ao->log) < 0 ||
+-        mp_jni_init_jfields(env, &AudioAttributes, AudioAttributes.mapping, 1, ao->log) < 0 ||
+-        mp_jni_init_jfields(env, &AudioAttributesBuilder, AudioAttributesBuilder.mapping, 1, ao->log) < 0 ||
+-        mp_jni_init_jfields(env, &AudioFormatBuilder, AudioFormatBuilder.mapping, 1, ao->log) < 0 ||
+-        mp_jni_init_jfields(env, &AudioFormat, AudioFormat.mapping, 1, ao->log) < 0) {
+-        uninit_jni(ao);
++    if (jni_static_use_count == 0) {
++        if (mp_jni_init_jfields(env, &AudioTrack, AudioTrack.mapping, 1, ao->log) < 0 ||
++            mp_jni_init_jfields(env, &ByteBuffer, ByteBuffer.mapping, 1, ao->log) < 0 ||
++            mp_jni_init_jfields(env, &AudioTimestamp, AudioTimestamp.mapping, 1, ao->log) < 0 ||
++            mp_jni_init_jfields(env, &AudioManager, AudioManager.mapping, 1, ao->log) < 0 ||
++            mp_jni_init_jfields(env, &AudioAttributes, AudioAttributes.mapping, 1, ao->log) < 0 ||
++            mp_jni_init_jfields(env, &AudioAttributesBuilder, AudioAttributesBuilder.mapping, 1, ao->log) < 0 ||
++            mp_jni_init_jfields(env, &AudioFormatBuilder, AudioFormatBuilder.mapping, 1, ao->log) < 0 ||
++            mp_jni_init_jfields(env, &AudioFormat, AudioFormat.mapping, 1, ao->log) < 0) {
++            mp_jni_reset_jfields(env, &AudioTrack, AudioTrack.mapping, 1, ao->log);
++            mp_jni_reset_jfields(env, &AudioTimestamp, AudioTimestamp.mapping, 1, ao->log);
++            mp_jni_reset_jfields(env, &AudioManager, AudioManager.mapping, 1, ao->log);
++            mp_jni_reset_jfields(env, &AudioFormat, AudioFormat.mapping, 1, ao->log);
++            mp_jni_reset_jfields(env, &AudioFormatBuilder, AudioFormatBuilder.mapping, 1, ao->log);
++            mp_jni_reset_jfields(env, &AudioAttributes, AudioAttributes.mapping, 1, ao->log);
++            mp_jni_reset_jfields(env, &AudioAttributesBuilder, AudioAttributesBuilder.mapping, 1, ao->log);
++            mp_jni_reset_jfields(env, &ByteBuffer, ByteBuffer.mapping, 1, ao->log);
++            mp_mutex_unlock(&jni_static_lock);
++            return -1;
++        }
+     }
++    jni_static_use_count++;
++    mp_mutex_unlock(&jni_static_lock);
+     return 0;
+ }
+ 
